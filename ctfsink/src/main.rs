@@ -16,11 +16,24 @@ struct NgrokConfig {
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    #[clap(long, short, action)]
+    #[clap(long, short, action, help = "Expose server through ngrok tunnel")]
     ngrok: bool,
-    #[arg(short, long, value_name = "token", env = "NGROK_AUTHTOKEN")]
+    #[arg(
+        short,
+        long,
+        value_name = "token",
+        env = "NGROK_AUTHTOKEN",
+        help = "Token to be used for ngrok, will read from ngrok config if not provided"
+    )]
     token: Option<String>,
-    #[arg(short, long, value_name = "port", env = "PORT", default_value = "5000")]
+    #[arg(
+        short,
+        long,
+        value_name = "port",
+        env = "PORT",
+        default_value = "5000",
+        help = "Port to expose server on locally"
+    )]
     port: u16,
     #[command(subcommand)]
     command: Option<Commands>,
@@ -28,7 +41,7 @@ struct Args {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// directly start ngrok server
+    /// Expose server through ngrok tunnel
     Ngrok,
 }
 
@@ -79,11 +92,13 @@ async fn main() -> anyhow::Result<()> {
 
     match start_ngrok {
         true => {
-            // we still need a token to be able to start ngrok
+            // Instead of binding a local port like so:
+            // axum::Server::bind(&"0.0.0.0:8000".parse().unwrap())
+            // Run it with an ngrok tunnel instead!
+            // Note that we still need a token to be able to start ngrok.
             match get_ngrok_token(cli.token) {
                 Some(token) => {
                     let tun = ngrok::Session::builder()
-                        // Read the token from the NGROK_AUTHTOKEN environment variable
                         .authtoken(token)
                         // Connect the ngrok session
                         .connect()
@@ -95,9 +110,6 @@ async fn main() -> anyhow::Result<()> {
 
                     println!("Tunnel started on URL: {:?}", tun.url());
 
-                    // Instead of binding a local port like so:
-                    // axum::Server::bind(&"0.0.0.0:8000".parse().unwrap())
-                    // Run it with an ngrok tunnel instead!
                     axum::Server::builder(tun)
                         .serve(app.into_make_service_with_connect_info::<SocketAddr>())
                         .await
@@ -109,7 +121,7 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         false => {
-            // run it locally
+            // Run local server.
             let addr = SocketAddr::from(([127, 0, 0, 1], cli.port));
             println!("listening on {}", addr);
             axum::Server::bind(&addr)
