@@ -6,6 +6,10 @@ use ngrok::prelude::*;
 
 use serde::{Deserialize, Serialize};
 use serde_yaml::{self};
+use tower_http::trace::TraceLayer;
+use tracing::Level;
+
+use tracing_subscriber::{filter, layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct NgrokConfig {
@@ -79,9 +83,25 @@ async fn handler(ConnectInfo(remote_addr): ConnectInfo<SocketAddr>) -> Html<Stri
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // build our application with a single route
-    let app = Router::new().route("/", get(handler));
+    let fmt_layer = tracing_subscriber::fmt::layer()
+        .with_target(false)
+        .compact();
 
+    let filter_layer = filter::Targets::new()
+        .with_target("tower_http::trace::on_response", Level::DEBUG)
+        // .with_target("tower_http::trace::on_request", Level::DEBUG)
+        .with_target("tower_http::trace::make_span", Level::DEBUG)
+        .with_default(Level::INFO);
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .init();
+
+    // build our application with a single route
+    let app = Router::new()
+        .route("/", get(handler))
+        .layer(TraceLayer::new_for_http());
     let cli = Args::parse();
 
     // if ngrok subcommand or argument is present
@@ -108,7 +128,7 @@ async fn main() -> anyhow::Result<()> {
                         .listen()
                         .await?;
 
-                    println!("Tunnel started on URL: {:?}", tun.url());
+                    tracing::info!("Tunnel started on URL: {:?}", tun.url());
 
                     axum::Server::builder(tun)
                         .serve(app.into_make_service_with_connect_info::<SocketAddr>())
@@ -116,14 +136,16 @@ async fn main() -> anyhow::Result<()> {
                         .unwrap();
                 }
                 None => {
-                    println!("Cannot start server behind ngrok as no ngrok token were found!");
+                    tracing::info!(
+                        "Cannot start server behind ngrok as no ngrok token were found!"
+                    );
                 }
             }
         }
         false => {
             // Run local server.
             let addr = SocketAddr::from(([127, 0, 0, 1], cli.port));
-            println!("listening on {}", addr);
+            tracing::info!("listening on {}", addr);
             axum::Server::bind(&addr)
                 .serve(app.into_make_service_with_connect_info::<SocketAddr>())
                 .await
