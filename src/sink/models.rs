@@ -13,6 +13,24 @@ pub struct RequestFile {
     pub is_yaml: bool,
 }
 
+impl RequestFile {
+    pub fn to_tuple(&self) -> (String, String, String) {
+        let color = match self.method {
+            Method::GET => "bg-primary",
+            Method::POST => "bg-danger",
+            Method::PATCH => "bg-success",
+            Method::PUT => "bg-info",
+            Method::OPTIONS => "bg-warning",
+            _ => "bg-secondary",
+        };
+        (
+            self.time.to_string(),
+            self.method.to_string(),
+            color.to_string(),
+        )
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseRequestFileError;
 

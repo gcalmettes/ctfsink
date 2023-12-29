@@ -8,6 +8,7 @@ mod cli;
 mod config;
 mod dashboard;
 mod sink;
+mod templates;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {

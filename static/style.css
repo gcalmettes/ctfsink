@@ -1,0 +1,15 @@
+body {
+  padding-top: 3.5rem;
+}
+.container {
+  max-width: 960px;
+}
+
+.color-nav {
+  background-color: grey;
+}
+
+.text-logo {
+  vertical-align: middle;
+  margin-bottom: 0 !important;
+}

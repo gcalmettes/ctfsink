@@ -9,7 +9,9 @@ pub async fn run(port: u16) {
     let localhost_v4 = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), port);
     let listener_v4 = TcpListener::bind(&localhost_v4).await.unwrap();
 
-    let app = Router::new().route("/", get(handlers::home));
+    let app = Router::new()
+        .route("/", get(handlers::home))
+        .route("/static/*file", get(handlers::static_handler));
 
     tracing::info!("Dashboard available at {}", localhost_v4);
     axum::serve(listener_v4, app.into_make_service())

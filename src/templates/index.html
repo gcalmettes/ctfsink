@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>CTFsink</title>
+        <link rel="icon" href="/static/favicon.ico" />
+        <link rel="stylesheet" href="/static/bootstrap.min.css" />
+        <link rel="stylesheet" href="/static/style.css" />
+    </head>
+
+    <body class="d-flex flex-column h-100">
+        <header>
+          <nav class="navbar navbar-light color-nav fixed-top">
+            <a class="navbar-brand row" href="/">
+              <div class="col-sm">
+                <img style="margin-left: 10px" src="/static/blackhole.png" height="35" alt="">
+              </div>
+              <div class="col-sm d-flex align-items-center">
+                <h3 class="text-logo">Black Hole</h3>
+              </div>
+            </a>
+          </nav>
+        </header>
+
+        <main class="flex-shrink-0">
+
+        <div class="container px-3 py-1">
+          <h3 class="py-3">Sinked requests</h3>
+          <div class="card">
+            <div class="card-body">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Method</th>
+                  </tr>
+                <thead>
+                <tbody>
+                  {% for (time, method, color) in requests %}
+                  <tr>
+                    <td>{{ time }}</td>
+                    <td>
+                      <span class="badge {{ color }}">{{ method }}</span>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        </main>
+    </body>
+</html>
