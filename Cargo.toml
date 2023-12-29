@@ -1,0 +1,26 @@
+[package]
+name = "ctfsink"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+opt-level = 'z' # Optimize for size
+lto = true
+codegen-units = 1
+# panic = "abort"
+
+[dependencies]
+anyhow = "1.0.77"
+# axum = { version = "0.7.2", features = ["macros"] }
+axum = { version = "0.7.2"}
+axum-extra = { version = "0.9.0", features = ["cookie"] }
+chrono = "0.4.31"
+clap = { version = "4.4.11", features = ["derive", "env"] }
+figment = { version = "0.10.12", features = ["env"] }
+once_cell = "1.19.0"
+serde = { version = "1.0.193", features = ["derive"] }
+serde_yaml = "0.9.29"
+tokio = { version = "1.35.1", features = ["full"] }
+tower-http = { version = "0.5.0", features = ["trace"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
