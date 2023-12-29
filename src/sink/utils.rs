@@ -4,17 +4,23 @@ use tokio::fs::{create_dir_all, File};
 use tokio::io;
 use tokio::io::AsyncWriteExt; // for write_all()
 
-use crate::config;
+use crate::{config, sink::models::RequestFile};
 
-pub async fn write_request_to_file(parts: &str, body: &str, method: Method, yaml: bool) {
+pub async fn write_request_to_file(parts: &str, body: &str, method: Method, is_yaml: bool) {
     let settings = &config::SETTINGS;
 
-    let time = Local::now().format("%Y%m%d-%H:%M:%S");
-    let path = format!("{time}-{method:?}.{}", if yaml { "yaml" } else { "in" });
+    let now = Local::now();
+
+    let request_file = RequestFile {
+        time: now,
+        method,
+        is_yaml,
+    };
+
     async {
         // Create the file. `File` implements `AsyncWrite`.
         create_dir_all(&settings.requests_folder).await?;
-        let path = std::path::Path::new(&settings.requests_folder).join(path);
+        let path = std::path::Path::new(&settings.requests_folder).join(request_file.to_string());
         let mut file = File::create(path).await?;
 
         // Copy the request parts into the file.

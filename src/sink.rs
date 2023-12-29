@@ -5,7 +5,7 @@ use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 
 mod handlers;
-mod models;
+pub mod models;
 mod utils;
 
 pub async fn run(port: u16) {
