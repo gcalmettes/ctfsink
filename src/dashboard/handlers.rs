@@ -1,4 +1,5 @@
 use axum::{
+    extract::Path,
     http::Uri,
     response::{Html, IntoResponse},
 };
@@ -41,11 +42,28 @@ pub async fn home() -> impl IntoResponse {
 
     let html = template
         .render(context! {
-            requests => files.iter().map(|r| r.to_tuple()).collect::<Vec<(_, _, _)>>(),
+            requests => files.iter().map(|r| r.to_tuple()).collect::<Vec<(_, _, _, _)>>(),
         })
         .unwrap();
 
     Html(html)
+}
+
+pub async fn detail(Path(encoded): Path<String>) -> impl IntoResponse {
+    let request_file = RequestFile::decode_name(&encoded);
+    let settings = &config::SETTINGS;
+    let path = std::path::Path::new(&settings.requests_folder).join(request_file.to_string());
+    let file_content = fs::read_to_string(path).await.unwrap_or("".to_string());
+
+    let mut content = file_content.split("body: |\n");
+    let info = content.next().unwrap_or("").trim();
+    let body = content.last();
+
+    // let formatted = format!("<pre><code class='language-yaml'>{info}</code></pre>");
+
+    // println!("{:?}", info);
+    // Html(formatted)
+    Html(info.to_string())
 }
 
 pub async fn static_handler(uri: Uri) -> impl IntoResponse {
@@ -57,19 +75,3 @@ pub async fn static_handler(uri: Uri) -> impl IntoResponse {
 
     StaticFile::get(path)
 }
-
-// use minijinja::{context, Environment};
-
-//     let file = EmbeddedTemplates::get("view-feedback.html").unwrap();
-//     let mut env = Environment::new();
-//     let html_template = String::from_utf8(file.data.to_vec()).unwrap();
-//     env.add_template("view-feedback.html", &html_template)
-//         .unwrap();
-//     let template = env.get_template("view-feedback.html").unwrap();
-
-//     let html = template
-//         .render(context! {
-//             email => comment.email,
-//             content => comment.message
-//         })
-//         .unwrap();

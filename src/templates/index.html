@@ -4,6 +4,9 @@
         <title>CTFsink</title>
         <link rel="icon" href="/static/favicon.ico" />
         <link rel="stylesheet" href="/static/bootstrap.min.css" />
+        <link rel="stylesheet" href="/static/bootstrap-icons.min.css" />
+        <link rel="stylesheet" href="/static/prism.css" />
+        <!-- <link rel="stylesheet" href="/static/highlight.min.css" /> -->
         <link rel="stylesheet" href="/static/style.css" />
     </head>
 
@@ -26,29 +29,49 @@
         <div class="container px-3 py-1">
           <h3 class="py-3">Sinked requests</h3>
           <div class="card">
-            <div class="card-body">
-              <table class="table table-striped">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Method</th>
-                  </tr>
-                <thead>
-                <tbody>
-                  {% for (time, method, color) in requests %}
-                  <tr>
-                    <td>{{ time }}</td>
-                    <td>
-                      <span class="badge {{ color }}">{{ method }}</span>
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
+            <!-- <div class="card-body"> -->
+
+              <div class="container">
+                <div class="row" >
+                  <div class="col-6">
+                    <strong>Time</strong>
+                  </div>
+                  <div class="col-6">
+                    <strong>Method</strong>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="accordion" id="accordionRequests">
+                {% for (time, method, color, id) in requests %}
+                  <div class="accordion-item">
+                    <div class="accordion-header">
+                      <div hx-get="/detail/{{id}}" hx-swap="innerHTML transition:true" hx-target="#swap-{{id}}"  class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#{{id}}" aria-expanded="false" aria-controls="{{id}}">
+                        <div class="col-6">
+                          {{time}}
+                        </div>
+                        <div class="col-6">
+                          <span class="badge {{ color }}">{{ method }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div id="{{id}}" class="accordion-collapse collapse" data-bs-parent="#accordionRequests">
+                      <div class="accordion-body">
+                        <pre><code id="swap-{{id}}" class="language-yaml">some details</code><pre>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+
+            <!-- </div> -->
           </div>
         </div>
 
         </main>
     </body>
+    <script src="/static/bootstrap.bundle.min.js"></script>
+    <script src='/static/htmx.min.js'></script>
+    <script src='/static/prism.js'></script>
+    <!-- <script src='/static/highlight.min.js'></script> -->
 </html>

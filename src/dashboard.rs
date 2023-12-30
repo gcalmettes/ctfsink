@@ -11,6 +11,7 @@ pub async fn run(port: u16) {
 
     let app = Router::new()
         .route("/", get(handlers::home))
+        .route("/detail/:encoded", get(handlers::detail))
         .route("/static/*file", get(handlers::static_handler));
 
     tracing::info!("Dashboard available at {}", localhost_v4);

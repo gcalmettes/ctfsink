@@ -1,10 +1,19 @@
 use axum::http::{header::HeaderMap, Method};
 use axum_extra::extract::cookie::CookieJar;
+use base64::{
+    alphabet,
+    engine::{self, general_purpose},
+    Engine as _,
+};
 use chrono::{offset::LocalResult, DateTime, Local, NaiveDateTime, TimeZone};
+use itertools::Itertools;
 use serde::Serialize;
 use std::{collections::HashMap, fmt, str::FromStr};
 
 static TIME_FORMAT: &str = "%Y%m%d-%H:%M:%S";
+
+const CUSTOM_ENGINE: engine::GeneralPurpose =
+    engine::GeneralPurpose::new(&alphabet::URL_SAFE, general_purpose::NO_PAD);
 
 #[derive(Debug)]
 pub struct RequestFile {
@@ -14,7 +23,7 @@ pub struct RequestFile {
 }
 
 impl RequestFile {
-    pub fn to_tuple(&self) -> (String, String, String) {
+    pub fn to_tuple(&self) -> (String, String, String, String) {
         let color = match self.method {
             Method::GET => "bg-primary",
             Method::POST => "bg-danger",
@@ -27,7 +36,18 @@ impl RequestFile {
             self.time.to_string(),
             self.method.to_string(),
             color.to_string(),
+            self.encoded_name(),
         )
+    }
+
+    pub fn encoded_name(&self) -> String {
+        let mut buf = String::new();
+        CUSTOM_ENGINE.encode_string(self.to_string(), &mut buf);
+        buf
+    }
+
+    pub fn decode_name(name: &str) -> String {
+        String::from_utf8(CUSTOM_ENGINE.decode(name).unwrap()).unwrap()
     }
 }
 
