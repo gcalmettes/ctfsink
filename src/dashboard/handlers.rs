@@ -59,11 +59,25 @@ pub async fn detail(Path(encoded): Path<String>) -> impl IntoResponse {
     let info = content.next().unwrap_or("").trim();
     let body = content.last();
 
-    // let formatted = format!("<pre><code class='language-yaml'>{info}</code></pre>");
+    let info_mapping: serde_yaml::Mapping = serde_yaml::from_str(&info).unwrap_or_default();
+    let headers_mapping = info_mapping.get("headers").unwrap();
+    let cookies_mapping = info_mapping.get("cookies").unwrap();
+    let query_params_mapping = info_mapping.get("query_params").unwrap();
 
-    // println!("{:?}", info);
-    // Html(formatted)
-    Html(info.to_string())
+    let formatted = format!(
+        " \
+            <pre><code class='language-yaml' id='headers-{encoded}'>{}</code></pre> \
+            <pre><code class='language-yaml' id='cookies-{encoded}'>{}</code></pre> \
+            <pre><code class='language-yaml' id='query-params-{encoded}'>{}</code></pre> \
+            <pre><code class='language-yaml' id='body-{encoded}'>{}</code></pre> \
+        ",
+        serde_yaml::to_string(&headers_mapping).unwrap(),
+        serde_yaml::to_string(&cookies_mapping).unwrap(),
+        serde_yaml::to_string(&query_params_mapping).unwrap(),
+        body.unwrap_or_default()
+    );
+
+    Html(formatted)
 }
 
 pub async fn static_handler(uri: Uri) -> impl IntoResponse {

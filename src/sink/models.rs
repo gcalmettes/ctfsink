@@ -6,7 +6,6 @@ use base64::{
     Engine as _,
 };
 use chrono::{offset::LocalResult, DateTime, Local, NaiveDateTime, TimeZone};
-use itertools::Itertools;
 use serde::Serialize;
 use std::{collections::HashMap, fmt, str::FromStr};
 
