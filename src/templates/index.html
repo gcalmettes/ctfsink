@@ -6,7 +6,6 @@
         <link rel="stylesheet" href="/static/bootstrap.min.css" />
         <link rel="stylesheet" href="/static/bootstrap-icons.min.css" />
         <link rel="stylesheet" href="/static/prism.css" />
-        <!-- <link rel="stylesheet" href="/static/highlight.min.css" /> -->
         <link rel="stylesheet" href="/static/style.css" />
     </head>
 
@@ -73,5 +72,10 @@
     <script src="/static/bootstrap.bundle.min.js"></script>
     <script src='/static/htmx.min.js'></script>
     <script src='/static/prism.js'></script>
-    <!-- <script src='/static/highlight.min.js'></script> -->
+    <script>
+      document.body.addEventListener('htmx:afterSwap', function(evt) {
+        // dynamically highlight the new element added to the DOM
+        Prism.highlightElement(evt.target);
+      });
+    </script>
 </html>
