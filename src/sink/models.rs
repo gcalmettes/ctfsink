@@ -6,8 +6,11 @@ use base64::{
     Engine as _,
 };
 use chrono::{offset::LocalResult, DateTime, Local, NaiveDateTime, TimeZone};
+use itertools::Itertools;
 use serde::Serialize;
 use std::{collections::HashMap, fmt, str::FromStr};
+
+use crate::{config, utils};
 
 static TIME_FORMAT: &str = "%Y%m%d-%H:%M:%S";
 
@@ -18,11 +21,12 @@ const CUSTOM_ENGINE: engine::GeneralPurpose =
 pub struct RequestFile {
     pub time: DateTime<Local>,
     pub method: Method,
+    pub path: Option<String>,
     pub is_yaml: bool,
 }
 
 impl RequestFile {
-    pub fn to_tuple(&self) -> (String, String, String, String) {
+    pub fn to_tuple(&self) -> (String, String, String, String, String, String) {
         let color = match self.method {
             Method::GET => "bg-primary",
             Method::POST => "bg-danger",
@@ -31,9 +35,16 @@ impl RequestFile {
             Method::OPTIONS => "bg-warning",
             _ => "bg-secondary",
         };
+        let path = match &self.path {
+            None => "/".to_string(),
+            Some(p) => format!("/{p}"),
+        };
         (
-            self.time.to_string(),
+            // self.time.to_string(),
+            self.time.format("%Y/%m/%d").to_string(),
+            self.time.format("%H:%M:%S").to_string(),
             self.method.to_string(),
+            path,
             color.to_string(),
             self.encoded_name(),
         )
@@ -48,6 +59,31 @@ impl RequestFile {
     pub fn decode_name(name: &str) -> String {
         String::from_utf8(CUSTOM_ENGINE.decode(name).unwrap()).unwrap()
     }
+
+    pub async fn read(encoded_name: &str) -> serde_yaml::Mapping {
+        let request_file_name = RequestFile::decode_name(&encoded_name);
+
+        let settings = &config::SETTINGS;
+
+        let path =
+            std::path::Path::new(&settings.requests_folder).join(request_file_name.to_string());
+
+        if !utils::path_is_valid(&request_file_name) || !path.exists() {
+            let mut fake = serde_yaml::Mapping::new();
+            for section in ["headers", "cookies", "query_params", "body"] {
+                fake.insert(
+                    serde_yaml::Value::String(section.to_string()),
+                    serde_yaml::Value::Null,
+                );
+            }
+            return fake;
+        }
+        let file_content = tokio::fs::read_to_string(path)
+            .await
+            .unwrap_or("".to_string());
+
+        serde_yaml::from_str(&file_content).unwrap_or_default()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -55,9 +91,16 @@ pub struct ParseRequestFileError;
 
 impl fmt::Display for RequestFile {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let path = match &self.path {
+            Some(path) => {
+                let path_tree = path.split("/").filter(|p| !p.is_empty()).join("_");
+                format!("_{path_tree}")
+            }
+            None => "".to_string(),
+        };
         let time = self.time.format(TIME_FORMAT);
         let path = format!(
-            "{time}-{:?}.{}",
+            "{time}-{:?}{path}.{}",
             self.method,
             if self.is_yaml { "yaml" } else { "in" }
         );
@@ -72,7 +115,11 @@ impl FromStr for RequestFile {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (date, rest) = s.split_once("-").ok_or(ParseRequestFileError)?;
         let (time, rest) = rest.split_once("-").ok_or(ParseRequestFileError)?;
-        let (method, ext) = rest.split_once(".").ok_or(ParseRequestFileError)?;
+        let (method_and_path, ext) = rest.split_once(".").ok_or(ParseRequestFileError)?;
+        let mut method_and_path = method_and_path.split("_");
+        let method = method_and_path.next().unwrap();
+        let path = method_and_path.join("/");
+        let path = (!path.is_empty()).then(|| path);
 
         let method = Method::from_str(method).map_err(|_| ParseRequestFileError)?;
         let is_yaml = ext == "yaml";
@@ -80,11 +127,11 @@ impl FromStr for RequestFile {
         let naive_fromstr =
             NaiveDateTime::parse_from_str(&format!("{}-{}", date, time), TIME_FORMAT)
                 .map_err(|_| ParseRequestFileError)?;
-        // let time_fromstr: DateTime<Local> = Local.from_local_datetime(&naive_fromstr).unwrap();
         if let LocalResult::Single(time) = Local.from_local_datetime(&naive_fromstr) {
             Ok(RequestFile {
                 time,
                 method,
+                path,
                 is_yaml,
             })
         } else {

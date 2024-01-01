@@ -42,39 +42,32 @@ pub async fn home() -> impl IntoResponse {
 
     let html = template
         .render(context! {
-            requests => files.iter().map(|r| r.to_tuple()).collect::<Vec<(_, _, _, _)>>(),
+            requests => files.iter().map(|r| r.to_tuple()).collect::<Vec<(_, _, _, _, _,_)>>(),
         })
         .unwrap();
 
     Html(html)
 }
 
-pub async fn detail(Path(encoded): Path<String>) -> impl IntoResponse {
-    let request_file = RequestFile::decode_name(&encoded);
-    let settings = &config::SETTINGS;
-    let path = std::path::Path::new(&settings.requests_folder).join(request_file.to_string());
-    let file_content = fs::read_to_string(path).await.unwrap_or("".to_string());
-
-    let mut content = file_content.split("body: |\n");
-    let info = content.next().unwrap_or("").trim();
-    let body = content.last();
-
-    let info_mapping: serde_yaml::Mapping = serde_yaml::from_str(&info).unwrap_or_default();
-    let headers_mapping = info_mapping.get("headers").unwrap();
-    let cookies_mapping = info_mapping.get("cookies").unwrap();
-    let query_params_mapping = info_mapping.get("query_params").unwrap();
+pub async fn detail(Path(encoded_name): Path<String>) -> impl IntoResponse {
+    let request_file = RequestFile::read(&encoded_name).await;
+    let headers_mapping = request_file.get("headers").unwrap();
+    let cookies_mapping = request_file.get("cookies").unwrap();
+    let query_params_mapping = request_file.get("query_params").unwrap();
+    // A body might not be present in every request
+    let body_mapping = request_file.get("body").unwrap_or(&serde_yaml::Value::Null);
 
     let formatted = format!(
         " \
-            <pre><code class='language-yaml' id='headers-{encoded}'>{}</code></pre> \
-            <pre><code class='language-yaml' id='cookies-{encoded}'>{}</code></pre> \
-            <pre><code class='language-yaml' id='query-params-{encoded}'>{}</code></pre> \
-            <pre><code class='language-yaml' id='body-{encoded}'>{}</code></pre> \
+            <pre><code class='language-yaml' id='headers-{encoded_name}'>{}</code></pre> \
+            <pre><code class='language-yaml' id='cookies-{encoded_name}'>{}</code></pre> \
+            <pre><code class='language-yaml' id='query-params-{encoded_name}'>{}</code></pre> \
+            <pre><code class='language-yaml' id='body-{encoded_name}'>{}</code></pre> \
         ",
-        serde_yaml::to_string(&headers_mapping).unwrap(),
-        serde_yaml::to_string(&cookies_mapping).unwrap(),
-        serde_yaml::to_string(&query_params_mapping).unwrap(),
-        body.unwrap_or_default()
+        serde_yaml::to_string(&headers_mapping).unwrap_or_default(),
+        serde_yaml::to_string(&cookies_mapping).unwrap_or_default(),
+        serde_yaml::to_string(&query_params_mapping).unwrap_or_default(),
+        serde_yaml::to_string(&body_mapping).unwrap_or_default(),
     );
 
     Html(formatted)

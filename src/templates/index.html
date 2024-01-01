@@ -29,27 +29,30 @@
           <div class="card">
             <!-- <div class="card-body"> -->
 
-              <div class="container">
-                <div class="row" >
-                  <div class="col-6">
-                    <strong>Time</strong>
-                  </div>
-                  <div class="col-6">
-                    <strong>Method</strong>
-                  </div>
-                </div>
-              </div>
+              <!-- <div class="container"> -->
+              <!--   <div class="row" > -->
+              <!--     <div class="col-6"> -->
+              <!--       <strong>Time</strong> -->
+              <!--     </div> -->
+              <!--     <div class="col-6"> -->
+              <!--       <strong>Method</strong> -->
+              <!--     </div> -->
+              <!--   </div> -->
+              <!-- </div> -->
 
               <div class="accordion" id="accordionRequests" hx-ext="multi-swap">
-                {% for (time, method, color, id) in requests %}
+                {% for (day, time, method, path, color, id) in requests %}
                   <div class="accordion-item">
                     <div class="accordion-header">
                       <div hx-get="/detail/{{id}}" hx-swap="multi:#headers-{{id}},#cookies-{{id}},#query-params-{{id}},#body-{{id}}" class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#{{id}}" aria-expanded="false" aria-controls="{{id}}">
-                        <div class="col-6">
-                          {{time}}
+                        <div class="col-4">
+                          <span>{{day}}</span> <span class="fw-bold">{{time}}</span>
+                        </div>
+                        <div class="col-2">
+                          <span class="badge {{ color }}">{{ method }}</span>
                         </div>
                         <div class="col-6">
-                          <span class="badge {{ color }}">{{ method }}</span>
+                          {{path}}
                         </div>
                       </div>
                     </div>
@@ -79,16 +82,16 @@
                         </ul>
                         <div class="tab-content" id="tab-content-{{id}}">
                           <div class="tab-pane show active" id="headers-tab-pane-{{id}}" role="tabpanel" aria-labelledby="headers-tab-{{id}}" tabindex="0">
-                            <pre><code id="headers-{{id}}" class="language-yaml">some details</code><pre>
+                            <pre><code id="headers-{{id}}" class="language-yaml">null</code><pre>
                           </div>
                           <div class="tab-pane" id="cookies-tab-pane-{{id}}" role="tabpanel" aria-labelledby="cookies-tab-{{id}}" tabindex="0">
-                            <pre><code id="cookies-{{id}}" class="language-yaml">some details</code><pre>
+                            <pre><code id="cookies-{{id}}" class="language-yaml">null</code><pre>
                           </div>
                           <div class="tab-pane" id="query-params-tab-pane-{{id}}" role="tabpanel" aria-labelledby="query-params-tab-{{id}}" tabindex="0">
-                            <pre><code id="query-params-{{id}}" class="language-yaml">some details</code><pre>
+                            <pre><code id="query-params-{{id}}" class="language-yaml">null</code><pre>
                           </div>
                           <div class="tab-pane" id="body-tab-pane-{{id}}" role="tabpanel" aria-labelledby="body-tab-{{id}}" tabindex="0">
-                            <pre><code id="body-{{id}}" class="language-json">some details</code><pre>
+                            <pre><code id="body-{{id}}" class="language-json">null</code><pre>
                           </div>
                         </div>
 
