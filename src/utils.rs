@@ -1,4 +1,4 @@
-use axum::http::Method;
+use axum::http::{Method, Uri};
 use chrono::Local;
 use tokio::fs::{create_dir_all, File};
 use tokio::io;
@@ -7,7 +7,7 @@ use tokio::io::AsyncWriteExt; // for write_all()
 use crate::{config, sink::models::RequestFile};
 
 pub async fn write_request_to_file(
-    path: Option<String>,
+    full_uri: Uri,
     parts: &str,
     body: &str,
     method: Method,
@@ -20,7 +20,7 @@ pub async fn write_request_to_file(
     let request_file = RequestFile {
         time: now,
         method,
-        path,
+        uri: full_uri,
         is_yaml,
     };
 

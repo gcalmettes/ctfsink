@@ -27,19 +27,6 @@
         <div class="container px-3 py-1">
           <h3 class="py-3">Sinked requests</h3>
           <div class="card">
-            <!-- <div class="card-body"> -->
-
-              <!-- <div class="container"> -->
-              <!--   <div class="row" > -->
-              <!--     <div class="col-6"> -->
-              <!--       <strong>Time</strong> -->
-              <!--     </div> -->
-              <!--     <div class="col-6"> -->
-              <!--       <strong>Method</strong> -->
-              <!--     </div> -->
-              <!--   </div> -->
-              <!-- </div> -->
-
               <div class="accordion" id="accordionRequests" hx-ext="multi-swap">
                 {% for (day, time, method, path, color, id) in requests %}
                   <div class="accordion-item">
@@ -51,7 +38,7 @@
                         <div class="col-2">
                           <span class="badge {{ color }}">{{ method }}</span>
                         </div>
-                        <div class="col-6">
+                        <div class="col-5 font-monospace bg-light">
                           {{path}}
                         </div>
                       </div>
@@ -100,7 +87,6 @@
                   </div>
                 {% endfor %}
               </div>
-            <!-- </div> -->
           </div>
         </div>
 

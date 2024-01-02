@@ -1,4 +1,4 @@
-use axum::http::{header::HeaderMap, Method};
+use axum::http::{header::HeaderMap, Method, Uri};
 use axum_extra::extract::cookie::CookieJar;
 use base64::{
     alphabet,
@@ -6,7 +6,7 @@ use base64::{
     Engine as _,
 };
 use chrono::{offset::LocalResult, DateTime, Local, NaiveDateTime, TimeZone};
-use itertools::Itertools;
+use ellipse::Ellipse;
 use serde::Serialize;
 use std::{collections::HashMap, fmt, str::FromStr};
 
@@ -21,7 +21,7 @@ const CUSTOM_ENGINE: engine::GeneralPurpose =
 pub struct RequestFile {
     pub time: DateTime<Local>,
     pub method: Method,
-    pub path: Option<String>,
+    pub uri: Uri,
     pub is_yaml: bool,
 }
 
@@ -35,16 +35,17 @@ impl RequestFile {
             Method::OPTIONS => "bg-warning",
             _ => "bg-secondary",
         };
-        let path = match &self.path {
-            None => "/".to_string(),
-            Some(p) => format!("/{p}"),
-        };
+        let uri = self
+            .uri
+            .to_string()
+            .as_str()
+            .truncate_ellipse(32)
+            .to_string();
         (
-            // self.time.to_string(),
             self.time.format("%Y/%m/%d").to_string(),
             self.time.format("%H:%M:%S").to_string(),
             self.method.to_string(),
-            path,
+            uri,
             color.to_string(),
             self.encoded_name(),
         )
@@ -91,16 +92,10 @@ pub struct ParseRequestFileError;
 
 impl fmt::Display for RequestFile {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let path = match &self.path {
-            Some(path) => {
-                let path_tree = path.split("/").filter(|p| !p.is_empty()).join("_");
-                format!("_{path_tree}")
-            }
-            None => "".to_string(),
-        };
+        let uri = self.uri.to_string().replace("/", "|");
         let time = self.time.format(TIME_FORMAT);
         let path = format!(
-            "{time}-{:?}{path}.{}",
+            "{time}-{:?}-{uri}.{}",
             self.method,
             if self.is_yaml { "yaml" } else { "in" }
         );
@@ -115,13 +110,11 @@ impl FromStr for RequestFile {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (date, rest) = s.split_once("-").ok_or(ParseRequestFileError)?;
         let (time, rest) = rest.split_once("-").ok_or(ParseRequestFileError)?;
-        let (method_and_path, ext) = rest.split_once(".").ok_or(ParseRequestFileError)?;
-        let mut method_and_path = method_and_path.split("_");
-        let method = method_and_path.next().unwrap();
-        let path = method_and_path.join("/");
-        let path = (!path.is_empty()).then(|| path);
+        let (method, rest) = rest.split_once("-").ok_or(ParseRequestFileError)?;
+        let (uri, ext) = rest.split_once(".").ok_or(ParseRequestFileError)?;
 
         let method = Method::from_str(method).map_err(|_| ParseRequestFileError)?;
+        let uri = Uri::from_str(&uri.replace("|", "/")).unwrap_or_default();
         let is_yaml = ext == "yaml";
 
         let naive_fromstr =
@@ -131,7 +124,7 @@ impl FromStr for RequestFile {
             Ok(RequestFile {
                 time,
                 method,
-                path,
+                uri,
                 is_yaml,
             })
         } else {
@@ -157,7 +150,6 @@ impl RequestInfo<'_> {
         let cookies = cookie_jar
             .iter()
             .map(|c| (c.name().into(), c.value_trimmed().into()))
-            // .filter_map(|c| Some(c.name_value_trimmed()))
             .collect::<HashMap<String, String>>();
 
         let headers = headers
