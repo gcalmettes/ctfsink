@@ -1,36 +1,19 @@
 use axum::{
-    extract::Path,
+    extract::{Path, State},
     http::Uri,
     response::{Html, IntoResponse},
 };
 use minijinja::{context, Environment};
 use std::cmp::Reverse;
-use std::str::FromStr;
-use tokio::fs;
-use tokio::fs::create_dir_all;
 
-use crate::config;
-use crate::sink::models::RequestFile;
-use crate::templates::EmbeddedTemplates;
-use crate::templates::StaticFile;
+use crate::{
+    db::Db,
+    request::RequestFile,
+    templates::{EmbeddedTemplates, StaticFile},
+};
 
-pub async fn home() -> impl IntoResponse {
-    let settings = &config::SETTINGS;
-    let requests_folder = &settings.requests_folder;
-
-    create_dir_all(requests_folder).await.unwrap();
-
-    let mut files = vec![];
-    let mut entries = fs::read_dir(requests_folder).await.unwrap();
-
-    while let Ok(Some(entry)) = entries.next_entry().await {
-        if let Some(filename) = entry.file_name().to_str() {
-            if let Ok(request_file) = RequestFile::from_str(filename) {
-                files.push(request_file);
-            };
-        }
-    }
-
+pub async fn home(State(db): State<Db>) -> impl IntoResponse {
+    let mut files = db.all().await;
     files.sort_unstable_by_key(|r| Reverse(r.time));
 
     let file = EmbeddedTemplates::get("index.html").unwrap();

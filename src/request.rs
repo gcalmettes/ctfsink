@@ -10,15 +10,18 @@ use ellipse::Ellipse;
 use serde::Serialize;
 use std::{collections::HashMap, fmt, str::FromStr};
 
-use crate::{config, utils};
+use crate::{config, db::Db};
 
 static TIME_FORMAT: &str = "%Y%m%d-%H:%M:%S";
 
 const CUSTOM_ENGINE: engine::GeneralPurpose =
     engine::GeneralPurpose::new(&alphabet::URL_SAFE, general_purpose::NO_PAD);
 
+// TODO: add Mutex or RWLock system to ensure files are accessed safely
+// Do that probably at the db.rs level
 #[derive(Debug)]
 pub struct RequestFile {
+    // pub mu: Mutex<()>,
     pub time: DateTime<Local>,
     pub method: Method,
     pub uri: Uri,
@@ -69,7 +72,7 @@ impl RequestFile {
         let path =
             std::path::Path::new(&settings.requests_folder).join(request_file_name.to_string());
 
-        if !utils::path_is_valid(&request_file_name) || !path.exists() {
+        if !Db::path_is_valid(&request_file_name) || !path.exists() {
             let mut fake = serde_yaml::Mapping::new();
             for section in ["headers", "cookies", "query_params", "body"] {
                 fake.insert(
@@ -122,6 +125,7 @@ impl FromStr for RequestFile {
                 .map_err(|_| ParseRequestFileError)?;
         if let LocalResult::Single(time) = Local.from_local_datetime(&naive_fromstr) {
             Ok(RequestFile {
+                // mu: Mutex::new(()),
                 time,
                 method,
                 uri,

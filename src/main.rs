@@ -6,10 +6,11 @@ use tracing_subscriber::{filter, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod cli;
 mod config;
-mod dashboard;
-mod sink;
+mod db;
+mod handlers;
+mod request;
+mod server;
 mod templates;
-mod utils;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -30,10 +31,10 @@ async fn main() -> std::io::Result<()> {
 
     let settings = &config::SETTINGS;
 
-    let sink = sink::run(settings.port_sink);
-    let dashbaord = dashboard::run(settings.port_dashboard);
+    let sink = server::run_sink(settings.port_sink);
+    let dashboard = server::run_dashboard(settings.port_dashboard);
 
-    let (_sink_server, _dashboard_server) = tokio::join!(sink, dashbaord);
+    let (_sink_server, _dashboard_server) = tokio::join!(sink, dashboard);
 
     Ok(())
 }
