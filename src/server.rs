@@ -7,6 +7,7 @@ use tokio;
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 
+use tokio::signal;
 use crate::{db, handlers};
 
 pub async fn run_sink(port: u16) {
@@ -22,6 +23,7 @@ pub async fn run_sink(port: u16) {
 
     tracing::info!("Sink listening on {}", localhost_v4);
     axum::serve(listener_v4, app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal("sink"))
         .await
         .unwrap();
 }
@@ -39,6 +41,35 @@ pub async fn run_dashboard(port: u16) {
 
     tracing::info!("Dashboard available at {}", localhost_v4);
     axum::serve(listener_v4, app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal("dashboard"))
         .await
         .unwrap();
+}
+
+async fn shutdown_signal(name: &str) {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            println!("shutting down {} following SIGINT", name)
+        },
+        _ = terminate => {
+            println!("shutting down {} following SIGTERM", name)
+        },
+    }
 }
