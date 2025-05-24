@@ -148,7 +148,7 @@ impl RequestInfo<'_> {
     pub fn from_parts<'a>(
         headers: &'a HeaderMap,
         query_params: Vec<(String, String)>,
-    ) -> RequestInfo {
+    ) -> RequestInfo<'a> {
         let cookie_jar = CookieJar::from_headers(headers);
 
         let cookies = cookie_jar
