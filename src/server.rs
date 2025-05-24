@@ -11,7 +11,7 @@ use tokio::signal;
 use crate::{db, handlers};
 
 pub async fn run_sink(port: u16) {
-    let localhost_v4 = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), port);
+    let localhost_v4 = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), port);
     let listener_v4 = TcpListener::bind(&localhost_v4).await.unwrap();
     let db = db::Db::new().await;
 
@@ -29,7 +29,7 @@ pub async fn run_sink(port: u16) {
 }
 
 pub async fn run_dashboard(port: u16) {
-    let localhost_v4 = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), port);
+    let localhost_v4 = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), port);
     let listener_v4 = TcpListener::bind(&localhost_v4).await.unwrap();
     let db = db::Db::new().await;
 
