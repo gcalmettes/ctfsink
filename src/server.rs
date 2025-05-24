@@ -16,7 +16,7 @@ pub async fn run_sink(port: u16) {
 
     let app = Router::new()
         .route("/", any(handlers::sink::root))
-        .route("/*anyroute", any(handlers::sink::any_path))
+        .route("/{*anyroute}", any(handlers::sink::any_path))
         .layer(TraceLayer::new_for_http())
         .with_state(db);
 
@@ -33,8 +33,8 @@ pub async fn run_dashboard(port: u16) {
 
     let app = Router::new()
         .route("/", get(handlers::dashboard::home))
-        .route("/detail/:encoded", get(handlers::dashboard::detail))
-        .route("/static/*file", get(handlers::dashboard::static_handler))
+        .route("/detail/{encoded}", get(handlers::dashboard::detail))
+        .route("/static/{*file}", get(handlers::dashboard::static_handler))
         .with_state(db);
 
     tracing::info!("Dashboard available at {}", localhost_v4);
