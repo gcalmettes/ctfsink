@@ -114,7 +114,7 @@ impl FromStr for RequestFile {
         let (date, rest) = s.split_once("-").ok_or(ParseRequestFileError)?;
         let (time, rest) = rest.split_once("-").ok_or(ParseRequestFileError)?;
         let (method, rest) = rest.split_once("-").ok_or(ParseRequestFileError)?;
-        let (uri, ext) = rest.split_once(".").ok_or(ParseRequestFileError)?;
+        let (uri, ext) = rest.rsplit_once(".").ok_or(ParseRequestFileError)?;
 
         let method = Method::from_str(method).map_err(|_| ParseRequestFileError)?;
         let uri = Uri::from_str(&uri.replace("|", "/")).unwrap_or_default();
