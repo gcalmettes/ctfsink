@@ -84,7 +84,7 @@ impl Db {
             file.write_all(parts_string.as_bytes()).await?;
 
             // Save the body, if any, into the file, indent it for YAML.
-            if body.len() > 0 {
+            if !body.is_empty() {
                 // multiline yaml string
                 file.write_all("body: |\n  ".as_bytes()).await?;
                 // indent each line so it because a multiline string in the yaml

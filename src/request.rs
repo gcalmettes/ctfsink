@@ -158,9 +158,8 @@ impl RequestInfo<'_> {
 
         let headers = headers
             .iter()
-            .filter_map(|(name, value)| {
-                (name != "cookie").then(|| (name.to_string(), value.to_str().unwrap_or_default()))
-            })
+            .filter(|&(name, _)| (name != "cookie"))
+            .map(|(name, value)| (name.to_string(), value.to_str().unwrap_or_default()))
             .collect::<HashMap<String, &str>>();
 
         // preserve duplicate keys for params
