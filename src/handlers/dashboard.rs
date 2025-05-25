@@ -37,8 +37,20 @@ pub async fn detail(Path(encoded_name): Path<String>) -> impl IntoResponse {
     let headers_mapping = request_file.get("headers").unwrap();
     let cookies_mapping = request_file.get("cookies").unwrap();
     let query_params_mapping = request_file.get("query_params").unwrap();
+
     // A body might not be present in every request
-    let body_mapping = request_file.get("body").unwrap_or(&serde_yaml::Value::Null);
+    let maybe_body = request_file
+        .get("body")
+        .map(|body| match body {
+            // If body is valid json, pretty format it
+            serde_yaml::Value::String(b) => serde_json::from_str(b)
+                .map(|json: serde_json::Value| {
+                    serde_json::to_string_pretty(&json).unwrap_or(b.to_string())
+                })
+                .unwrap_or(b.to_string()),
+            _ => String::new(),
+        })
+        .unwrap_or_default();
 
     let formatted = format!(
         " \
@@ -50,7 +62,7 @@ pub async fn detail(Path(encoded_name): Path<String>) -> impl IntoResponse {
         serde_yaml::to_string(&headers_mapping).unwrap_or_default(),
         serde_yaml::to_string(&cookies_mapping).unwrap_or_default(),
         serde_yaml::to_string(&query_params_mapping).unwrap_or_default(),
-        serde_yaml::to_string(&body_mapping).unwrap_or_default(),
+        maybe_body,
     );
 
     Html(formatted)
