@@ -114,7 +114,7 @@ impl FromStr for RequestFile {
         let (date, rest) = s.split_once("-").ok_or(ParseRequestFileError)?;
         let (time, rest) = rest.split_once("-").ok_or(ParseRequestFileError)?;
         let (method, rest) = rest.split_once("-").ok_or(ParseRequestFileError)?;
-        let (uri, ext) = rest.split_once(".").ok_or(ParseRequestFileError)?;
+        let (uri, ext) = rest.rsplit_once(".").ok_or(ParseRequestFileError)?;
 
         let method = Method::from_str(method).map_err(|_| ParseRequestFileError)?;
         let uri = Uri::from_str(&uri.replace("|", "/")).unwrap_or_default();
@@ -158,9 +158,8 @@ impl RequestInfo<'_> {
 
         let headers = headers
             .iter()
-            .filter_map(|(name, value)| {
-                (name != "cookie").then(|| (name.to_string(), value.to_str().unwrap_or_default()))
-            })
+            .filter(|&(name, _)| (name != "cookie"))
+            .map(|(name, value)| (name.to_string(), value.to_str().unwrap_or_default()))
             .collect::<HashMap<String, &str>>();
 
         // preserve duplicate keys for params
