@@ -33,8 +33,9 @@ async fn main() -> std::io::Result<()> {
 
     let sink = server::run_sink(settings.port_sink);
     let dashboard = server::run_dashboard(settings.port_dashboard);
+    let proxy = server::run_proxy(settings.port_proxy, &settings.proxy_url);
 
-    let (_sink_server, _dashboard_server) = tokio::join!(sink, dashboard);
+    let (_sink_server, _dashboard_server, _proxy_server) = tokio::join!(sink, dashboard, proxy);
 
     Ok(())
 }

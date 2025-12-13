@@ -52,6 +52,7 @@ impl Db {
         params: Query<Vec<(String, String)>>,
         body: &str,
         method: Method,
+        suffix: Option<String>,
     ) {
         let info = RequestInfo::from_parts(&headers, params.to_vec());
         let (parts_string, is_yaml) = match serde_yaml::to_string(&info) {
@@ -73,7 +74,17 @@ impl Db {
 
         async {
             // Create the file. `File` implements `AsyncWrite`.
-            let path = std::path::Path::new(&self.folder).join(request_file.to_string());
+
+            let file_name = match suffix {
+                None => request_file.to_string(),
+                Some(suffix) => {
+                    let original = request_file.to_string();
+                    let new_suffix = format!("{suffix}.yaml");
+                    original.replace(".yaml", &new_suffix)
+                }
+            };
+
+            let path = std::path::Path::new(&self.folder).join(file_name);
             let mut file = File::create(path).await?;
 
             // Save Uri in file.
