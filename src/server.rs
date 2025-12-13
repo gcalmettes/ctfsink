@@ -1,4 +1,6 @@
 use axum::{
+    body::Body,
+    middleware::{self},
     routing::{any, get},
     Router,
 };
@@ -7,8 +9,12 @@ use tokio;
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 
-use tokio::signal;
+use hyper_util::{client::legacy::connect::HttpConnector, rt::TokioExecutor};
+
+type Client = hyper_util::client::legacy::Client<HttpConnector, Body>;
+
 use crate::{db, handlers};
+use tokio::signal;
 
 pub async fn run_sink(port: u16) {
     let localhost_v4 = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), port);
@@ -72,4 +78,38 @@ async fn shutdown_signal(name: &str) {
             println!("shutting down {} following SIGTERM", name)
         },
     }
+}
+
+pub async fn run_proxy(port: u16, proxy_url: &str) {
+    let localhost_v4 = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), port);
+    let listener_v4 = TcpListener::bind(&localhost_v4).await.unwrap();
+    let db = db::Db::new().await;
+    let client: Client =
+        hyper_util::client::legacy::Client::<(), ()>::builder(TokioExecutor::new())
+            .build(HttpConnector::new());
+
+    let proxy_state = handlers::proxy::ProxyState {
+        client: client.clone(),
+        url_to: proxy_url.to_string(),
+    };
+
+    let app = Router::new()
+        .route("/{*anyroute}", any(handlers::proxy::proxy))
+        .layer(TraceLayer::new_for_http())
+        // .layer(TraceLayer::new_for_http().make_span_with(tracing::info_span!("service", "proxy")))
+        .layer(middleware::from_fn_with_state(
+            db,
+            handlers::proxy::save_request_and_response,
+        ))
+        .with_state(proxy_state);
+
+    tracing::info!(
+        "Proxy listening on {} and proxying {}",
+        localhost_v4,
+        proxy_url
+    );
+    axum::serve(listener_v4, app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal("proxy"))
+        .await
+        .unwrap();
 }

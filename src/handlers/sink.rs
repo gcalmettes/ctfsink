@@ -14,7 +14,8 @@ pub async fn root(
     params: Query<Vec<(String, String)>>,
     body: String,
 ) -> Result<impl IntoResponse, (StatusCode, ())> {
-    db.add(original_uri, headers, params, &body, method).await;
+    db.add(original_uri, headers, params, &body, method, None)
+        .await;
     Ok(())
 }
 
@@ -26,6 +27,7 @@ pub async fn any_path(
     params: Query<Vec<(String, String)>>,
     body: String,
 ) -> Result<impl IntoResponse, (StatusCode, ())> {
-    db.add(original_uri, headers, params, &body, method).await;
+    db.add(original_uri, headers, params, &body, method, None)
+        .await;
     Ok(())
 }

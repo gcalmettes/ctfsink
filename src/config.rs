@@ -19,6 +19,10 @@ pub struct Settings {
     pub port_sink: u16,
     #[serde(default = "default_port_dashboard")]
     pub port_dashboard: u16,
+    #[serde(default = "default_port_proxy")]
+    pub port_proxy: u16,
+    #[serde(default = "default_proxy_url")]
+    pub proxy_url: String,
     #[serde(default = "default_requests_folder")]
     pub requests_folder: String,
 }
@@ -37,8 +41,16 @@ fn default_port_sink() -> u16 {
     5000
 }
 
-fn default_port_dashboard() -> u16 {
+fn default_port_proxy() -> u16 {
     5001
+}
+
+fn default_port_dashboard() -> u16 {
+    5005
+}
+
+fn default_proxy_url() -> String {
+    "http://127.0.0.1:5000".to_string()
 }
 
 fn default_requests_folder() -> String {
