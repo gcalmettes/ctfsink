@@ -1,12 +1,26 @@
 use axum::{
-    body::{Body, Bytes},
+    body::{Body, BodyDataStream, Bytes},
     extract::{Query, Request, State},
-    http::{header::HeaderMap, Method, StatusCode, Uri},
+    http::{header, header::HeaderMap, Method, StatusCode, Uri},
     middleware::Next,
     response::{IntoResponse, Response},
 };
+
+use tokio::fs::File;
+use tokio::io;
+
+use tokio::io::AsyncWriteExt;
+
+use tokio::runtime::Handle;
+
 use axum_macros::FromRef;
+use chrono::Local;
 use hyper_util::client::legacy::connect::HttpConnector;
+use std::pin::{pin, Pin};
+use std::task::Context;
+use std::task::Poll;
+
+use futures_util::stream::Stream;
 
 use http_body_util::BodyExt;
 
@@ -54,7 +68,7 @@ pub async fn save_request_and_response(
     let params: Query<Vec<(String, String)>> = Query::try_from_uri(req.uri()).unwrap();
 
     let (parts, body) = req.into_parts();
-    let bytes = buffer_and_print(
+    let bytes = buffer_and_save(
         db.clone(),
         "request",
         original_uri.clone(),
@@ -67,35 +81,88 @@ pub async fn save_request_and_response(
     .await?;
     let req = Request::from_parts(parts, Body::from(bytes));
 
-    let res = next.run(req).await;
-    let resp_headers = res.headers().clone();
+    let resp = next.run(req).await;
+    let resp_headers = resp.headers().clone();
 
-    let (parts, body) = res.into_parts();
+    if let Some(content_type) = resp.headers().get(header::CONTENT_TYPE) {
+        // non stream response (buffered)
+        if content_type.as_bytes() != b"text/event-stream" {
+            let (parts, body) = resp.into_parts();
 
-    let bytes = buffer_and_print(
-        db,
-        "response",
-        original_uri,
-        resp_headers,
-        params,
-        method,
-        Some(String::from("_PROXY_RESP")),
-        body,
-    )
-    .await?;
-    let res = Response::from_parts(parts, Body::from(bytes));
+            let bytes = buffer_and_save(
+                db,
+                "response",
+                original_uri,
+                resp_headers,
+                params,
+                method,
+                Some(String::from("_PROXY_RESP")),
+                body,
+            )
+            .await?;
+            let resp = Response::from_parts(parts, Body::from(bytes));
+            return Ok(resp);
+        }
+    } else {
+        // in doubt, just return the response
+        return Ok(resp);
+    }
 
-    Ok(res)
+    // stream response (SSE)
+    let (parts, body) = resp.into_parts();
+
+    let now = Local::now();
+
+    let (parts_string, is_yaml) = db
+        .get_file_header(resp_headers.clone(), params.clone())
+        .await;
+
+    // create file and add headers
+    let file_path = db
+        .get_file_path(
+            original_uri.clone(),
+            method.clone(),
+            is_yaml,
+            Some(now),
+            Some(String::from("_PROXY_RESP")),
+        )
+        .await;
+
+    async {
+        // Create the file. `File` implements `AsyncWrite`.
+        let mut file = File::create(file_path.clone()).await?;
+        // Save Uri in file.
+        file.write_all(format!("uri: {original_uri}\n").as_bytes())
+            .await?;
+
+        // Save request parts in file.
+        file.write_all(parts_string.as_bytes()).await?;
+
+        // prepare body section
+        file.write_all("body: |\n  ".as_bytes()).await?;
+
+        Ok::<_, io::Error>(())
+    }
+    .await
+    .unwrap();
+
+    let body = body.into_data_stream();
+
+    let body = Body::from_stream(SaveStream::new(body, db.clone(), file_path));
+
+    let resp = Response::from_parts(parts, body);
+
+    Ok(resp)
 }
 
-async fn buffer_and_print<B>(
+async fn buffer_and_save<B>(
     db: Db,
     direction: &str,
     full_uri: Uri,
     headers: HeaderMap,
     params: Query<Vec<(String, String)>>,
     method: Method,
-    prefix: Option<String>,
+    suffix: Option<String>,
     body: B,
 ) -> Result<Bytes, (StatusCode, String)>
 where
@@ -113,11 +180,47 @@ where
     };
 
     if let Ok(body) = std::str::from_utf8(&bytes) {
-        // tracing::debug!("{direction} body = {body:?}");
-
-        db.add(full_uri, headers, params, body, method, prefix)
+        db.add(full_uri, headers, params, body, method, suffix)
             .await;
     }
 
     Ok(bytes)
+}
+
+struct SaveStream {
+    inner: BodyDataStream,
+    db: Db,
+    file_path: std::path::PathBuf,
+}
+
+impl SaveStream {
+    pub fn new(body: BodyDataStream, db: Db, file_path: std::path::PathBuf) -> Self {
+        Self {
+            inner: body,
+            db: db,
+            file_path: file_path,
+        }
+    }
+}
+
+impl Stream for SaveStream {
+    type Item = Result<Bytes, axum::Error>;
+
+    #[inline]
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match pin!(&mut self.inner).as_mut().poll_next(cx) {
+            Poll::Ready(Some(Ok(chunk))) => {
+                let body = std::str::from_utf8(&chunk).unwrap();
+
+                let handle = Handle::current();
+                let _ = handle.enter();
+                futures::executor::block_on(async {
+                    self.db.fill_file(self.file_path.clone(), body).await;
+                });
+
+                Poll::Ready(Some(Ok(chunk)))
+            }
+            x => x,
+        }
+    }
 }
