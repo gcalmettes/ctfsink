@@ -86,7 +86,7 @@ pub async fn save_request_and_response(
 
     if let Some(content_type) = resp.headers().get(header::CONTENT_TYPE) {
         // non stream response (buffered)
-        if content_type.as_bytes() != b"text/event-stream" {
+        if !content_type.as_bytes().starts_with(b"text/event-stream") {
             let (parts, body) = resp.into_parts();
 
             let bytes = buffer_and_save(
