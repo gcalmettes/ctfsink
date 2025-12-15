@@ -12,7 +12,7 @@ use std::{collections::HashMap, fmt, str::FromStr};
 
 use crate::{config, db::Db};
 
-static TIME_FORMAT: &str = "%Y%m%d-%H:%M:%S";
+static TIME_FORMAT: &str = "%Y%m%d-%H:%M:%S.%f";
 
 const CUSTOM_ENGINE: engine::GeneralPurpose =
     engine::GeneralPurpose::new(&alphabet::URL_SAFE, general_purpose::NO_PAD);
